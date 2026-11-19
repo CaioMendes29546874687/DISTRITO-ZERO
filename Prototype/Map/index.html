@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101714">
+  <title>DISTRITO ZERO — Mapa de protótipo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:#101714;color:#f4fff6;font:16px system-ui, sans-serif}
+    header{padding:16px;background:#101714;border-bottom:1px solid #294234}
+    h1{margin:0;color:#72f59a;font-size:22px;letter-spacing:1px} p{margin:5px 0 0;color:#c0d2c5;font-size:13px}
+    #map{height:calc(100dvh - 91px);min-height:420px}
+    .note{padding:8px 14px;background:#17231c;color:#c0d2c5;font-size:12px}
+    .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#17231c;color:#fff}
+    a{color:#72f59a}
+  </style>
+</head>
+<body>
+  <header><h1>DISTRITO ZERO</h1><p>Protótipo cartográfico • Interior de São Paulo</p></header>
+  <div class="note">Mapa demonstrativo. Os marcadores são referências aproximadas; isto ainda não é o mapa 3D do jogo.</div>
+  <main id="map" aria-label="Mapa interativo do interior de São Paulo"></main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const map = L.map('map').setView([-22.75, -47.55], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const places = [
+      {name:'Mombuca', coords:[-22.928, -47.559]},
+      {name:'Capivari', coords:[-22.995, -47.507]},
+      {name:'Rio das Pedras', coords:[-22.843, -47.606]},
+      {name:'Piracicaba', coords:[-22.725, -47.649]}
+    ];
+    places.forEach(place => L.marker(place.coords).addTo(map).bindPopup(
+      '<strong>' + place.name + '</strong><br>Região inicial planejada do DISTRITO ZERO'
+    ));
+  </script>
+</body>
+</html>
