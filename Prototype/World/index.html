@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#080e0b"><title>DISTRITO ZERO — Protótipo 3D</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080e0b;color:#effff2;font-family:system-ui,Segoe UI,sans-serif;touch-action:none}
+#game{position:fixed;inset:0}canvas{display:block}
+.hud{position:fixed;z-index:3;pointer-events:none}.top{top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.brand{background:#07100bd9;border:1px solid #31523a;border-radius:12px;padding:9px 12px;backdrop-filter:blur(8px)}.brand b{display:block;letter-spacing:1.5px;color:#83f6a1;font-size:13px}.brand small{font-size:9px;color:#a9bdae;letter-spacing:1px}
+.pill{background:#07100bd9;border:1px solid #31523a;border-radius:99px;padding:8px 11px;font-size:10px;color:#c9d9cd}
+.help{position:fixed;z-index:3;left:12px;top:82px;max-width:260px;background:#07100bd9;border:1px solid #31523a;border-radius:10px;padding:9px 11px;color:#c0d0c4;font-size:10px;line-height:1.45;pointer-events:none}
+.controls{position:fixed;z-index:4;inset:auto 0 16px 0;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
+.pad{width:142px;height:142px;border-radius:50%;border:1px solid #9be9ad66;background:#0b1a11aa;position:relative;pointer-events:auto;touch-action:none}
+.stick{position:absolute;width:58px;height:58px;border-radius:50%;left:42px;top:42px;background:#78ef98bb;border:2px solid #d7ffe0;box-shadow:0 0 22px #72f59a44}
+.buttons{display:grid;grid-template-columns:repeat(2,64px);gap:9px;pointer-events:auto}
+.ctrl{height:58px;border:1px solid #5b9c6b;background:#0b1a11dd;color:#eaffee;border-radius:16px;font-weight:800;font-size:11px;touch-action:none}
+.ctrl.main{background:#75ef96;color:#07120a;border-color:#b4ffc6}
+.actions{position:fixed;z-index:5;right:12px;top:76px;display:flex;gap:7px}
+.action{pointer-events:auto;border:1px solid #477652;background:#09150ddd;color:#dfffe6;border-radius:10px;padding:9px 11px;font-size:10px;font-weight:700}
+#message{position:fixed;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);background:#07100bf0;border:1px solid #69c781;border-radius:14px;padding:16px 18px;text-align:center;max-width:290px;font-size:12px;display:none}
+#message b{color:#82f6a0;display:block;font-size:15px;margin-bottom:5px}
+@media(min-width:850px){.controls{padding:0 28px 20px}.pad{width:156px;height:156px}.stick{left:48px;top:48px}.help{font-size:12px}.ctrl{height:52px}.buttons{grid-template-columns:repeat(2,76px)}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div class="hud top"><div class="brand"><b>DISTRITO ZERO</b><small>PROTÓTIPO 3D · BUILD 0.2</small></div><div class="pill" id="mode">CÂMERA: TERCEIRA PESSOA</div></div>
+<div class="help">Explore o primeiro cenário de teste.<br>Celular: use o controle circular e os botões.<br>PC: WASD ou setas para andar · mouse para olhar.</div>
+<div class="actions"><button class="action" id="camera">1ª / 3ª PESSOA</button><button class="action" id="reset">REINICIAR</button></div>
+<div class="controls"><div class="pad" id="pad"><div class="stick" id="stick"></div></div><div class="buttons"><button class="ctrl" id="run">CORRER</button><button class="ctrl main" id="jump">PULAR</button><button class="ctrl" id="interact">INTERAGIR</button><button class="ctrl" id="horn">AÇÃO</button></div></div>
+<div id="message"><b>DISTRITO ZERO</b><span id="msgtext">Protótipo carregado.</span></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const root=document.getElementById('game');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9bc4d0);scene.fog=new THREE.Fog(0x9bc4d0,48,145);
+const camera=new THREE.PerspectiveCamera(67,innerWidth/innerHeight,.1,350);
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=false;renderer.outputColorSpace=THREE.SRGBColorSpace;root.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdff5ff,0x5d6948,2.0));
+const sun=new THREE.DirectionalLight(0xffedce,2.2);sun.position.set(-25,45,20);scene.add(sun);
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
+const groundMat=mat(0x6d8960),roadMat=mat(0x30383a),sideMat=mat(0xb8b7a4),white=mat(0xf1eee0),dark=mat(0x26302c),glass=mat(0x456a72,.35),green=mat(0x286a43),roof=mat(0x914e3b),skin=mat(0xb87955),shirt=mat(0x243d30),pants=mat(0x202a34),neon=mat(0x74f59a);
+function box(w,h,d,m,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);scene.add(o);return o}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(220,220),groundMat);floor.rotation.x=-Math.PI/2;floor.position.y=-.12;scene.add(floor);
+box(15,.12,150,roadMat,0,-.02,0);box(150,.12,13,roadMat,0,-.015,-4);
+for(let z=-68;z<72;z+=8){box(.12,.025,3,mat(0xe9df9d),0,.06,z)}
+// calçadas e quadras
+box(2,.18,150,sideMat,-8.5,.01,0);box(2,.18,150,sideMat,8.5,.01,0);box(150,.18,2,sideMat,0,.01,-12);
+function house(x,z,w=8,d=8,color=0xe2d8c2){
+ const wall=mat(color),h=2.8;
+ box(w,h,d,wall,x,h/2,z);box(w+0.5,.35,d+.5,roof,x,h+.16,z);
+ box(1.15,1.35,.12,glass,x-w*.23,1.45,z+d/2+.07);box(1.15,1.35,.12,glass,x+w*.23,1.45,z+d/2+.07);
+ box(1.05,2,.14,dark,x,1,z+d/2+.08);
+ box(.22,1.2,.18,mat(0xc8b28d),x+.35,1,z+d/2+.17);
+}
+const colors=[0xe7d9bd,0xd8e0d1,0xe5c8a8,0xcbd8d5,0xe4dfcf,0xd7c4b4];
+for(let i=0;i<8;i++){const z=-58+i*16;house(-19,z,8,9,colors[i%colors.length]);house(19,z,9,9,colors[(i+2)%colors.length]);}
+for(let i=0;i<5;i++){const x=-53+i*26;house(x,-24,10,9,colors[(i+1)%colors.length]);house(x,28,10,9,colors[(i+3)%colors.length]);}
+function tree(x,z){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.25,2,6),mat(0x69452c));trunk.position.set(x,1,z);scene.add(trunk);const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(1.25,1),mat(0x39784a));crown.position.set(x,2.7,z);scene.add(crown)}
+for(let i=0;i<25;i++){tree((i%2?1:-1)*(12+Math.random()*35),-65+i*5.5)}
+// placa da cidade
+box(5,1.4,.18,mat(0x174a2b),-5,3,-33);box(5.15,.08,.22,neon,-5,3.75,-33);
+const signCanvas=document.createElement('canvas');signCanvas.width=512;signCanvas.height=128;const ctx=signCanvas.getContext('2d');ctx.fillStyle='#174a2b';ctx.fillRect(0,0,512,128);ctx.fillStyle='#eaffee';ctx.font='bold 58px sans-serif';ctx.textAlign='center';ctx.fillText('DISTRITO ZERO',256,82);const tex=new THREE.CanvasTexture(signCanvas);const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.9,1.2),new THREE.MeshBasicMaterial({map:tex}));sign.position.set(-5,3,-32.88);scene.add(sign);
+// avatar low-poly
+const player=new THREE.Group();scene.add(player);
+const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.78,4,8),shirt);torso.position.y=1.48;player.add(torso);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.29,10,8),skin);head.position.y=2.25;player.add(head);
+const hair=new THREE.Mesh(new THREE.SphereGeometry(.3,10,6,0,Math.PI*2,0,Math.PI*.55),dark);hair.position.y=2.36;player.add(hair);
+const leg1=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.62,3,6),pants);leg1.position.set(-.2,.55,0);player.add(leg1);const leg2=leg1.clone();leg2.position.x=.2;player.add(leg2);
+const arm1=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.62,3,6),shirt);arm1.position.set(-.52,1.5,0);arm1.rotation.z=-.15;player.add(arm1);const arm2=arm1.clone();arm2.position.x=.52;arm2.rotation.z=.15;player.add(arm2);
+player.position.set(0,0,12);
+let yaw=0,camYaw=0,first=false,running=false,vy=0,onGround=true,joy={x:0,y:0},keys={},last=performance.now(),walkT=0;
+const cameraTarget=new THREE.Vector3();
+function setCamera(){document.getElementById('mode').textContent='CÂMERA: '+(first?'PRIMEIRA':'TERCEIRA')+' PESSOA';}
+function toggleCamera(){first=!first;setCamera()}
+document.getElementById('camera').onclick=toggleCamera;
+document.getElementById('reset').onclick=()=>{player.position.set(0,0,12);yaw=0;camYaw=0;toast('Posição reiniciada.');};
+function toast(s){const el=document.getElementById('message');document.getElementById('msgtext').textContent=s;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2200)}
+document.getElementById('run').onpointerdown=()=>running=true;document.getElementById('run').onpointerup=()=>running=false;document.getElementById('run').onpointerleave=()=>running=false;
+document.getElementById('jump').onclick=()=>{if(onGround){vy=7;onGround=false}};
+document.getElementById('interact').onclick=()=>toast('Nenhuma interação disponível nesta build. Próxima etapa: portas e objetos.');
+document.getElementById('horn').onclick=()=>toast('Ação de teste acionada.');
+window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.key.toLowerCase()==='v')toggleCamera();if(e.key===' ')document.getElementById('jump').click()});
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+const pad=document.getElementById('pad'),stick=document.getElementById('stick');let active=false,pid=null;
+function moveStick(e){const r=pad.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=43,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max}joy.x=dx/max;joy.y=dy/max;stick.style.transform='translate('+dx+'px,'+dy+'px)'}
+pad.addEventListener('pointerdown',e=>{active=true;pid=e.pointerId;pad.setPointerCapture(pid);moveStick(e)});
+pad.addEventListener('pointermove',e=>{if(active&&e.pointerId===pid)moveStick(e)});
+function stopStick(){active=false;joy={x:0,y:0};stick.style.transform='translate(0,0)'}
+pad.addEventListener('pointerup',stopStick);pad.addEventListener('pointercancel',stopStick);
+let dragging=false,prevX=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){dragging=true;prevX=e.clientX}});window.addEventListener('pointerup',()=>dragging=false);window.addEventListener('pointermove',e=>{if(dragging){camYaw-=(e.clientX-prevX)*.005;prevX=e.clientX}});
+function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.04);last=now;
+ let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)-joy.y;
+ let strafe=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joy.x;
+ const mag=Math.hypot(forward,strafe);if(mag>1){forward/=mag;strafe/=mag}
+ const moving=mag>.08;const speed=running?8.3:4.5;
+ const direction=new THREE.Vector3(strafe,0,-forward).applyAxisAngle(new THREE.Vector3(0,1,0),camYaw);
+ if(moving){player.position.addScaledVector(direction,speed*dt);yaw=Math.atan2(direction.x,direction.z);player.rotation.y=yaw;walkT+=dt*(running?13:8);leg1.rotation.x=Math.sin(walkT)*.55;leg2.rotation.x=-Math.sin(walkT)*.55;arm1.rotation.x=-Math.sin(walkT)*.35;arm2.rotation.x=Math.sin(walkT)*.35;}else{leg1.rotation.x=THREE.MathUtils.damp(leg1.rotation.x,0,8,dt);leg2.rotation.x=THREE.MathUtils.damp(leg2.rotation.x,0,8,dt);arm1.rotation.x=THREE.MathUtils.damp(arm1.rotation.x,0,8,dt);arm2.rotation.x=THREE.MathUtils.damp(arm2.rotation.x,0,8,dt)}
+ vy-=18*dt;player.position.y+=vy*dt;if(player.position.y<0){player.position.y=0;vy=0;onGround=true}
+ player.position.x=THREE.MathUtils.clamp(player.position.x,-68,68);player.position.z=THREE.MathUtils.clamp(player.position.z,-72,72);
+ if(first){camera.position.set(player.position.x,player.position.y+2.05,player.position.z);const look=new THREE.Vector3(Math.sin(camYaw),0,-Math.cos(camYaw));camera.lookAt(camera.position.clone().add(look));}
+ else{const target=new THREE.Vector3(player.position.x,player.position.y+1.5,player.position.z);const offset=new THREE.Vector3(Math.sin(camYaw)*7,4.2,Math.cos(camYaw)*7);camera.position.lerp(target.clone().add(offset),1-Math.exp(-5*dt));camera.lookAt(target)}
+ renderer.render(scene,camera);
+}
+requestAnimationFrame(animate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight)});
+setCamera();toast('Protótipo 3D carregado. Explore com os controles.');
+</script>
+</body></html>
