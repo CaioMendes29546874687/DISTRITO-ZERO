@@ -25,8 +25,8 @@
 </head>
 <body>
 <div id="game"></div>
-<div class="hud top"><div class="brand"><b>DISTRITO ZERO</b><small>PROTÓTIPO 3D · BUILD 0.2</small></div><div class="pill" id="mode">CÂMERA: TERCEIRA PESSOA</div></div>
-<div class="help">Explore o primeiro cenário de teste.<br>Celular: use o controle circular e os botões.<br>PC: WASD ou setas para andar · mouse para olhar.</div>
+<div class="hud top"><div class="brand"><b>DISTRITO ZERO</b><small>PROTÓTIPO 3D · BUILD 0.3 VEÍCULOS</small></div><div class="pill" id="mode">CÂMERA: TERCEIRA PESSOA</div></div>
+<div class="help">Explore o primeiro cenário de teste.<br>A pé: controle circular, correr e pular.<br>Carro: controle circular para dirigir · INTERAGIR para entrar/sair.</div>
 <div class="actions"><button class="action" id="camera">1ª / 3ª PESSOA</button><button class="action" id="reset">REINICIAR</button></div>
 <div class="controls"><div class="pad" id="pad"><div class="stick" id="stick"></div></div><div class="buttons"><button class="ctrl" id="run">CORRER</button><button class="ctrl main" id="jump">PULAR</button><button class="ctrl" id="interact">INTERAGIR</button><button class="ctrl" id="horn">AÇÃO</button></div></div>
 <div id="message"><b>DISTRITO ZERO</b><span id="msgtext">Protótipo carregado.</span></div>
@@ -62,6 +62,14 @@ for(let i=0;i<25;i++){tree((i%2?1:-1)*(12+Math.random()*35),-65+i*5.5)}
 // placa da cidade
 box(5,1.4,.18,mat(0x174a2b),-5,3,-33);box(5.15,.08,.22,neon,-5,3.75,-33);
 const signCanvas=document.createElement('canvas');signCanvas.width=512;signCanvas.height=128;const ctx=signCanvas.getContext('2d');ctx.fillStyle='#174a2b';ctx.fillRect(0,0,512,128);ctx.fillStyle='#eaffee';ctx.font='bold 58px sans-serif';ctx.textAlign='center';ctx.fillText('DISTRITO ZERO',256,82);const tex=new THREE.CanvasTexture(signCanvas);const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.9,1.2),new THREE.MeshBasicMaterial({map:tex}));sign.position.set(-5,3,-32.88);scene.add(sign);
+// primeiro carro dirigível
+const car=new THREE.Group();scene.add(car);car.position.set(0,0,3);
+const carPaint=mat(0x1e6b43,.35),carGlass=mat(0x19343b,.2),rubber=mat(0x111416),rim=mat(0xb8c7c2,.35),lamp=mat(0xe8f2c5);
+function carBox(w,h,d,m,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);car.add(o);return o;}
+carBox(2.05,.62,4.05,carPaint,0,.78,0);carBox(1.72,.72,2.05,carPaint,0,1.38,-.25);carBox(1.76,.58,1.7,carGlass,0,1.42,-.27);
+carBox(.62,.18,.12,lamp,-.67,.83,-2.04);carBox(.62,.18,.12,lamp,.67,.83,-2.04);
+carBox(1.85,.12,.12,dark,0,.48,2.04);
+const wheels=[];for(const x of [-1.05,1.05])for(const z of [-1.3,1.3]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.28,12),rubber);w.rotation.z=Math.PI/2;w.position.set(x,.43,z);car.add(w);wheels.push(w);const hub=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.3,10),rim);hub.rotation.z=Math.PI/2;hub.position.copy(w.position);car.add(hub);}
 // avatar low-poly
 const player=new THREE.Group();scene.add(player);
 const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.78,4,8),shirt);torso.position.y=1.48;player.add(torso);
@@ -71,6 +79,7 @@ const leg1=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.62,3,6),pants);leg1.pos
 const arm1=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.62,3,6),shirt);arm1.position.set(-.52,1.5,0);arm1.rotation.z=-.15;player.add(arm1);const arm2=arm1.clone();arm2.position.x=.52;arm2.rotation.z=.15;player.add(arm2);
 player.position.set(0,0,12);
 let yaw=0,camYaw=0,first=false,running=false,vy=0,onGround=true,joy={x:0,y:0},keys={},last=performance.now(),walkT=0;
+let inVehicle=false,carSpeed=0;
 const cameraTarget=new THREE.Vector3();
 function setCamera(){document.getElementById('mode').textContent='CÂMERA: '+(first?'PRIMEIRA':'TERCEIRA')+' PESSOA';}
 function toggleCamera(){first=!first;setCamera()}
@@ -79,8 +88,8 @@ document.getElementById('reset').onclick=()=>{player.position.set(0,0,12);yaw=0;
 function toast(s){const el=document.getElementById('message');document.getElementById('msgtext').textContent=s;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2200)}
 document.getElementById('run').onpointerdown=()=>running=true;document.getElementById('run').onpointerup=()=>running=false;document.getElementById('run').onpointerleave=()=>running=false;
 document.getElementById('jump').onclick=()=>{if(onGround){vy=7;onGround=false}};
-document.getElementById('interact').onclick=()=>toast('Nenhuma interação disponível nesta build. Próxima etapa: portas e objetos.');
-document.getElementById('horn').onclick=()=>toast('Ação de teste acionada.');
+document.getElementById('interact').onclick=()=>{if(!inVehicle&&player.position.distanceTo(car.position)<4.5){inVehicle=true;player.visible=false;toast('Você entrou no carro! Use o controle para dirigir.');}else if(inVehicle){inVehicle=false;player.visible=true;player.position.set(car.position.x+2,0,car.position.z);toast('Você saiu do carro.');}else toast('Chegue perto do carro para entrar.');};
+document.getElementById('horn').onclick=()=>toast(inVehicle?'Buzina! (som será adicionado depois)':'Ação de teste acionada.');
 window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.key.toLowerCase()==='v')toggleCamera();if(e.key===' ')document.getElementById('jump').click()});
 window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 const pad=document.getElementById('pad'),stick=document.getElementById('stick');let active=false,pid=null;
@@ -94,13 +103,22 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last
  let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)-joy.y;
  let strafe=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joy.x;
  const mag=Math.hypot(forward,strafe);if(mag>1){forward/=mag;strafe/=mag}
- const moving=mag>.08;const speed=running?8.3:4.5;
- const direction=new THREE.Vector3(strafe,0,-forward).applyAxisAngle(new THREE.Vector3(0,1,0),camYaw);
- if(moving){player.position.addScaledVector(direction,speed*dt);yaw=Math.atan2(direction.x,direction.z);player.rotation.y=yaw;walkT+=dt*(running?13:8);leg1.rotation.x=Math.sin(walkT)*.55;leg2.rotation.x=-Math.sin(walkT)*.55;arm1.rotation.x=-Math.sin(walkT)*.35;arm2.rotation.x=Math.sin(walkT)*.35;}else{leg1.rotation.x=THREE.MathUtils.damp(leg1.rotation.x,0,8,dt);leg2.rotation.x=THREE.MathUtils.damp(leg2.rotation.x,0,8,dt);arm1.rotation.x=THREE.MathUtils.damp(arm1.rotation.x,0,8,dt);arm2.rotation.x=THREE.MathUtils.damp(arm2.rotation.x,0,8,dt)}
- vy-=18*dt;player.position.y+=vy*dt;if(player.position.y<0){player.position.y=0;vy=0;onGround=true}
- player.position.x=THREE.MathUtils.clamp(player.position.x,-68,68);player.position.z=THREE.MathUtils.clamp(player.position.z,-72,72);
- if(first){camera.position.set(player.position.x,player.position.y+2.05,player.position.z);const look=new THREE.Vector3(Math.sin(camYaw),0,-Math.cos(camYaw));camera.lookAt(camera.position.clone().add(look));}
- else{const target=new THREE.Vector3(player.position.x,player.position.y+1.5,player.position.z);const offset=new THREE.Vector3(Math.sin(camYaw)*7,4.2,Math.cos(camYaw)*7);camera.position.lerp(target.clone().add(offset),1-Math.exp(-5*dt));camera.lookAt(target)}
+ const moving=mag>.08;
+ if(inVehicle){
+   carSpeed+=forward*(running?15:9)*dt;carSpeed*=Math.pow(.985,dt*60);carSpeed=THREE.MathUtils.clamp(carSpeed,-7,18);
+   if(Math.abs(carSpeed)>.15){car.rotation.y+=strafe*1.45*dt*(carSpeed>=0?1:-1);const dir=new THREE.Vector3(Math.sin(car.rotation.y),0,-Math.cos(car.rotation.y));car.position.addScaledVector(dir,carSpeed*dt);}
+   car.position.x=THREE.MathUtils.clamp(car.position.x,-68,68);car.position.z=THREE.MathUtils.clamp(car.position.z,-72,72);
+   wheels.forEach(w=>w.rotation.x-=carSpeed*dt*2.4);
+ }else{
+   const speed=running?8.3:4.5;
+   const direction=new THREE.Vector3(strafe,0,-forward).applyAxisAngle(new THREE.Vector3(0,1,0),camYaw);
+   if(moving){player.position.addScaledVector(direction,speed*dt);yaw=Math.atan2(direction.x,direction.z);player.rotation.y=yaw;walkT+=dt*(running?13:8);leg1.rotation.x=Math.sin(walkT)*.55;leg2.rotation.x=-Math.sin(walkT)*.55;arm1.rotation.x=-Math.sin(walkT)*.35;arm2.rotation.x=Math.sin(walkT)*.35;}else{leg1.rotation.x=THREE.MathUtils.damp(leg1.rotation.x,0,8,dt);leg2.rotation.x=THREE.MathUtils.damp(leg2.rotation.x,0,8,dt);arm1.rotation.x=THREE.MathUtils.damp(arm1.rotation.x,0,8,dt);arm2.rotation.x=THREE.MathUtils.damp(arm2.rotation.x,0,8,dt)}
+   vy-=18*dt;player.position.y+=vy*dt;if(player.position.y<0){player.position.y=0;vy=0;onGround=true}
+   player.position.x=THREE.MathUtils.clamp(player.position.x,-68,68);player.position.z=THREE.MathUtils.clamp(player.position.z,-72,72);
+ }
+ const focus=inVehicle?car:player;const focusY=inVehicle?1.25:player.position.y+1.5;
+ if(first){const eyeY=inVehicle?1.45:player.position.y+2.05;camera.position.set(focus.position.x,eyeY,focus.position.z);const look=new THREE.Vector3(Math.sin(inVehicle?car.rotation.y:camYaw),0,-Math.cos(inVehicle?car.rotation.y:camYaw));camera.lookAt(camera.position.clone().add(look));}
+ else{const target=new THREE.Vector3(focus.position.x,focusY,focus.position.z);const angle=inVehicle?car.rotation.y:camYaw;const offset=new THREE.Vector3(Math.sin(angle)*7,4.2,Math.cos(angle)*7);camera.position.lerp(target.clone().add(offset),1-Math.exp(-5*dt));camera.lookAt(target);}
  renderer.render(scene,camera);
 }
 requestAnimationFrame(animate);
